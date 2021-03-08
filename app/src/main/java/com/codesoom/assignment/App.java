@@ -17,3 +17,4 @@ public class App {
         return DozerBeanMapperBuilder.buildDefault();
     }
 }
+//http POST localhost:8080/products name="쥐돌이" maker="코드숨" price=1000 "Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOjF9.ZZ3CUl0jxeLGvQ1Js5nG2Ty5qGTlqai5ubDMXZOdaDk"

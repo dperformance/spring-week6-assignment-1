@@ -1,10 +1,13 @@
 package com.codesoom.assignment.controllers;
 
+import com.codesoom.assignment.application.AuthenticationService;
 import com.codesoom.assignment.application.ProductService;
 import com.codesoom.assignment.domain.Product;
 import com.codesoom.assignment.dto.ProductData;
+import com.codesoom.assignment.errors.InvalidTokenException;
 import com.codesoom.assignment.errors.ProductNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -30,11 +33,16 @@ class ProductControllerTest {
     private static final String INVALID_TOKEN = "eyJhbGciOiJIUzI1NiJ9." +
             "eyJ1c2VySWQiOjF9.ZZ3CUl0jxeLGvQ1Js5nG2Ty5qGTlqai5ubDMXZOdaD0";
 
+    private static final String SECRET = "12345678901234567890123456789012";
+
     @Autowired
     private MockMvc mockMvc;
 
     @MockBean
     private ProductService productService;
+
+    @MockBean
+    private AuthenticationService authenticationService;
 
     @BeforeEach
     void setUp() {
@@ -71,6 +79,12 @@ class ProductControllerTest {
 
         given(productService.deleteProduct(1000L))
                 .willThrow(new ProductNotFoundException(1000L));
+
+        given(authenticationService.parseToken(VALID_TOKEN)).willReturn(1L);
+
+        given(authenticationService.parseToken(INVALID_TOKEN))
+                .willThrow(new InvalidTokenException(INVALID_TOKEN));
+
     }
 
     @Test
@@ -100,6 +114,50 @@ class ProductControllerTest {
     }
 
     @Test
+    @DisplayName("제품 목록과 Token을 함께 추가 합니다.")
+    void createWithAccessToken() throws Exception {
+        mockMvc.perform(
+                post("/products")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"쥐돌이\",\"maker\":\"냥이월드\"," +
+                                                        "\"price\":5000}")
+                        .header("Authorization", "Bearer " + VALID_TOKEN)
+                        .accept(MediaType.APPLICATION_JSON_UTF8)
+        )
+                .andExpect(status().isCreated())
+                .andExpect(content().string(containsString("쥐돌이")));
+    }
+
+    @Test
+    @DisplayName("Token 없이 제품 추가 요청 401 erro (UNAUTHORIZED)")
+    void createWithoutAccessToken() throws Exception {
+        mockMvc.perform(
+                post("/products")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"쥐돌이\",\"maker\":\"냥이월드\"," +
+                                                        "\"price\":5000}")
+                        .accept(MediaType.APPLICATION_JSON_UTF8)
+        )
+                .andExpect(status().isUnauthorized());
+    }
+
+
+    @Test
+    @DisplayName("Invalid Token으로 제품 추가 요청시 401 error(UNAUTHORIZED)")
+    void createWithWrongAccessToken() throws Exception {
+        mockMvc.perform(
+                post("/products")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"쥐돌이\",\"maker\":\"냥이월드\"," +
+                                                        "\"price\":5000}")
+                        .accept(MediaType.APPLICATION_JSON_UTF8)
+                        .header("Authorization", "Bearer " + INVALID_TOKEN)
+        )
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("제품추가 요청시 201 code (Created)")
     void createWithValidAttributes() throws Exception {
         mockMvc.perform(
                 post("/products")
@@ -107,6 +165,7 @@ class ProductControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"쥐돌이\",\"maker\":\"냥이월드\"," +
                                 "\"price\":5000}")
+                        .header("Authorization", "Bearer " + VALID_TOKEN)
         )
                 .andExpect(status().isCreated())
                 .andExpect(content().string(containsString("쥐돌이")));
@@ -115,6 +174,7 @@ class ProductControllerTest {
     }
 
     @Test
+    @DisplayName("비어있는 제품추가 요청시 error 400(BAD_REQUEST)")
     void createWithInvalidAttributes() throws Exception {
         mockMvc.perform(
                 post("/products")
@@ -122,6 +182,7 @@ class ProductControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"\",\"maker\":\"\"," +
                                 "\"price\":0}")
+                        .header("Authorization", "Bearer " + VALID_TOKEN)
         )
                 .andExpect(status().isBadRequest());
     }
