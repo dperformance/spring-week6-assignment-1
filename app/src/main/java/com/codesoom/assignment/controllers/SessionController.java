@@ -8,12 +8,10 @@
 package com.codesoom.assignment.controllers;
 
 import com.codesoom.assignment.application.AuthenticationService;
+import com.codesoom.assignment.dto.SessionRequestData;
 import com.codesoom.assignment.dto.SessionResponse;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.ResponseStatus;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/session")
@@ -27,8 +25,12 @@ public class SessionController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public SessionResponse login() {
-        String accessToken = authenticationService.login();
+    public SessionResponse login(
+            @RequestBody SessionRequestData sessionRequestData) {
+        String email = sessionRequestData.getEmail();
+        String password = sessionRequestData.getPassword();
+
+        String accessToken = authenticationService.login(email, password);
 
         return SessionResponse.builder()
                 .accessToken(accessToken)
